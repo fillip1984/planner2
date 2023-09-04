@@ -6,7 +6,8 @@ import "~/styles/globals.css";
 
 const MyApp: AppType = ({ Component, pageProps }) => {
   return (
-    <main className="h-[100dvh] w-[100dvw] overflow-hidden bg-white text-black">
+    // <main className="h-[100dvh] w-[100dvw] overflow-hidden bg-white text-black">
+    <main className="bg-white text-black">
       <Component {...pageProps} />
     </main>
   );
