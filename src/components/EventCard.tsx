@@ -22,7 +22,7 @@ export default function EventCard({
   timeslots,
   calculateHourBasedOnPosition,
   calculatePositionBaseOnHour,
-  calculateWidthAndDepthPosition,
+  calculateWidthAndElevationPosition,
 }: {
   event: AgendaEvent;
   handleEventUpdate: (start: Date, end: Date, id: string) => void;
@@ -32,7 +32,7 @@ export default function EventCard({
     start: Date,
     end: Date,
   ) => { top: number; bottom: number };
-  calculateWidthAndDepthPosition: () => void;
+  calculateWidthAndElevationPosition: () => void;
 }) {
   const [state, setState] = useState<EventCardState>({
     //drag props
@@ -62,7 +62,7 @@ export default function EventCard({
         event.start,
         event.end,
       );
-      calculateWidthAndDepthPosition();
+      calculateWidthAndElevationPosition();
       //   console.dir({ top, bottom });
       if (top !== undefined && bottom != undefined) {
         setState((prev) => ({
@@ -183,7 +183,7 @@ export default function EventCard({
 
   return (
     <div
-      className="bg-secondary/20 border-secondary absolute rounded border-l-[6px] px-2 text-black"
+      className="absolute rounded border-l-[6px] border-secondary bg-secondary/20 px-2 text-black"
       style={{
         transform: `translateY(${state.translateY - CARD_GAP}px)`,
         cursor: `${state.isDragging ? "grabbing" : "grab"}`,
@@ -206,8 +206,7 @@ export default function EventCard({
         document.onselectstart = () => {
           return true;
         };
-      }}
-    >
+      }}>
       <h3 className="-mb-2">{event.description}</h3>
       <span className="text-xs">
         {format(event.start, "h aa")} - {format(event.end, "h aa")} (

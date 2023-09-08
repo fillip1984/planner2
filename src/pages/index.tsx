@@ -1,10 +1,8 @@
 import {
-  areIntervalsOverlapping,
   eachHourOfInterval,
   endOfDay,
   format,
   getHours,
-  isAfter,
   setHours,
   startOfDay,
 } from "date-fns";
@@ -123,102 +121,55 @@ export default function Home() {
     };
   };
 
-  const calculateWidthAndDepthPosition = () => {
-    console.log("calc width and depth position run");
-    // sort events by duration, longest to shortest, using id as tiebreaker
-    // const eventsSortedByDuration = events
-    //   .map((event) => ({
-    //     event,
-    //     durationInMinutes: differenceInMinutes(event.end, event.start),
-    //     interval: { start: event.start, end: addSeconds(event.end, -1) },
-    //   }))
-    //   .sort((e1, e2) => {
-    //     const diff = e2.durationInMinutes - e1.durationInMinutes;
-    //     if (diff !== 0) {
-    //       return diff;
-    //     }
-    //     return e1.event.id.localeCompare(e2.event.id);
-    //   });
-
-    const updates: { eventId: string; left: number; right: number }[] = [];
-
-    // find events that overlap, indent conflicts
-    events.forEach((event) => {
-      const interval1 = { start: event.start, end: event.end };
-      const conflicts = events.filter((anotherEvent) =>
-        areIntervalsOverlapping(interval1, {
-          start: anotherEvent.start,
-          end: anotherEvent.end,
-        }),
+  const calculateWidthAndElevationPosition = () => {
+    console.clear();
+    console.log("calc width and elevation position run");
+    let elevation = 0;
+    let ongoingEvents = 0;
+    timeslots.forEach((ts) => {
+      const eventsStarting = events.filter(
+        (e) => getHours(e.start) === ts.hour,
       );
-
-      const conflictingEventsAfterThisEvent = conflicts.filter((anotherEvent) =>
-        isAfter(anotherEvent.start, event.start),
-      );
-
-      conflictingEventsAfterThisEvent.forEach((anotherEvent) => {
-        const existingUpdate = updates.find(
-          (u) => u.eventId === anotherEvent.id,
-        );
-        if (existingUpdate) {
-          updates.map((u) =>
-            u.eventId === anotherEvent.id ? { ...u, left: u.left + 1 } : u,
-          );
-        } else {
-          updates.push({
-            eventId: anotherEvent.id,
-            left: 1,
-            right: 0,
-          });
-        }
+      // have to subtract 1 hr since end goes onto instead of up to next hour.
+      // For example, an event that is scheduled to run from 1 - 4 really goes
+      // from 1:00 until 3:59 but not 4:00 on the dot
+      const eventsEnding = events.filter(
+        (e) => getHours(e.end) - 1 === ts.hour,
+      ).length;
+      ongoingEvents += eventsStarting.length - eventsEnding;
+      console.log({
+        hour: ts.hour,
+        eventsStarting: eventsStarting.length,
+        eventsEnding,
+        ongoingEvents,
       });
-    });
-    console.dir({ updates });
+      if (ongoingEvents === 0) {
+        elevation = 0;
+      }
 
-    // find events that start at the same time, split the line across them all
-    timeslots
-      .map((timeslot) => {
-        return {
-          timeslot,
-          eventsThatStart: events.filter(
-            (event) => getHours(event.start) === timeslot.hour,
-          ),
-        };
-      })
-      .filter((timeslotWE) => timeslotWE.eventsThatStart.length !== 0)
-      .forEach((timeslotWE) => {
-        // if only 1 then item is end to end
-        if (
-          timeslotWE.eventsThatStart.length === 1 &&
-          timeslotWE.eventsThatStart[0]
-        ) {
-          // const id = timeslotWE.eventsThatStart[0].id;
-          // // updates.splice({ eventId: id, left: 0, right: 0 });
-          // const index = updates.findIndex((u) => (u.eventId = id));
-          // updates.splice(index, 1, { eventId: id, left: 0, right: 0 });
-        } else {
-          let left = 0;
-          let right = 0;
-          let width = 0;
-          timeslotWE.eventsThatStart.forEach((e) => {
-            width = roundToNearestHundreth(
-              100 / timeslotWE.eventsThatStart.length,
-            );
-            right = roundToNearestHundreth(100 - left - width);
-            updates.push({ eventId: e.id, left, right });
-            left += width;
-          });
-        }
-      });
+      eventsStarting.forEach((e) => (e.left = elevation));
+      elevation += eventsStarting.length;
 
-    setEvents((prev) => {
-      return prev.map((prevEvent) => ({
-        ...prevEvent,
-        left:
-          updates.find((update) => update.eventId === prevEvent.id)?.left ?? 0,
-        right:
-          updates.find((update) => update.eventId === prevEvent.id)?.right ?? 0,
-      }));
+      // console.log({ hour: ts.hour, elevation, ongoingEvents });
+
+      // console.dir({ hour: ts.hour, ongoingEvents, elevation });
+      // const eventsStarting = events.filter(
+      //   (e) => getHours(e.start) === ts.hour,
+      // );
+      // ongoingEvents = ongoingEvents.concat(eventsStarting);
+      // eventsStarting.forEach((e) => ({ ...e, left: (e.left = elevation) }));
+      // elevation += eventsStarting.length;
+      // const eventsEnding = ongoingEvents.filter(
+      //   (e) => getHours(e.end) === ts.hour,
+      // );
+      // ongoingEvents = ongoingEvents.filter((e) =>
+      //   eventsEnding.find((ee) => e.id === ee.id),
+      // );
+      // if (elevation > 0 && ongoingEvents.length === 0) {
+      //   console.log({ hour: ts.hour, msg: "resetting elevation" });
+      //   elevation = 0;
+      // }
+      // console.dir({ hour: ts.hour, ongoingEvents, elevation });
     });
   };
 
@@ -292,7 +243,9 @@ export default function Home() {
               timeslots={timeslots}
               calculateHourBasedOnPosition={calculateHourBasedOnPosition}
               calculatePositionBaseOnHour={calculatePositionBaseOnHour}
-              calculateWidthAndDepthPosition={calculateWidthAndDepthPosition}
+              calculateWidthAndElevationPosition={
+                calculateWidthAndElevationPosition
+              }
             />
           ))}
         </div>
