@@ -10,7 +10,6 @@ import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 import EventCard from "~/components/EventCard";
 import { type AgendaEvent, type Timeslot } from "~/types";
-import { roundToNearestHundreth } from "~/utils/numberUtils";
 
 export default function Home() {
   const hours = eachHourOfInterval({
@@ -137,39 +136,19 @@ export default function Home() {
         (e) => getHours(e.end) - 1 === ts.hour,
       ).length;
       ongoingEvents += eventsStarting.length - eventsEnding;
+      if (ongoingEvents === 0) {
+        elevation = 0;
+      }
       console.log({
         hour: ts.hour,
         eventsStarting: eventsStarting.length,
         eventsEnding,
         ongoingEvents,
+        elevation,
       });
-      if (ongoingEvents === 0) {
-        elevation = 0;
-      }
 
       eventsStarting.forEach((e) => (e.left = elevation));
       elevation += eventsStarting.length;
-
-      // console.log({ hour: ts.hour, elevation, ongoingEvents });
-
-      // console.dir({ hour: ts.hour, ongoingEvents, elevation });
-      // const eventsStarting = events.filter(
-      //   (e) => getHours(e.start) === ts.hour,
-      // );
-      // ongoingEvents = ongoingEvents.concat(eventsStarting);
-      // eventsStarting.forEach((e) => ({ ...e, left: (e.left = elevation) }));
-      // elevation += eventsStarting.length;
-      // const eventsEnding = ongoingEvents.filter(
-      //   (e) => getHours(e.end) === ts.hour,
-      // );
-      // ongoingEvents = ongoingEvents.filter((e) =>
-      //   eventsEnding.find((ee) => e.id === ee.id),
-      // );
-      // if (elevation > 0 && ongoingEvents.length === 0) {
-      //   console.log({ hour: ts.hour, msg: "resetting elevation" });
-      //   elevation = 0;
-      // }
-      // console.dir({ hour: ts.hour, ongoingEvents, elevation });
     });
   };
 
