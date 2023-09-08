@@ -1,6 +1,6 @@
 import { format, getHours, setHours } from "date-fns";
 import { useEffect, useState, type PointerEvent } from "react";
-import { type Event, type Timeslot } from "~/types";
+import { type AgendaEvent, type Timeslot } from "~/types";
 
 type EventCardState = {
   isDragging: boolean;
@@ -14,14 +14,17 @@ type EventCardState = {
   isModalOpen: boolean;
 };
 
+const CARD_GAP = -1;
+
 export default function EventCard({
   event,
   handleEventUpdate,
   timeslots,
   calculateHourBasedOnPosition,
   calculatePositionBaseOnHour,
+  calculateWidthAndDepthPosition,
 }: {
-  event: Event;
+  event: AgendaEvent;
   handleEventUpdate: (start: Date, end: Date, id: string) => void;
   timeslots: Timeslot[];
   calculateHourBasedOnPosition: (clientY: number) => number | undefined;
@@ -29,6 +32,7 @@ export default function EventCard({
     start: Date,
     end: Date,
   ) => { top: number; bottom: number };
+  calculateWidthAndDepthPosition: () => void;
 }) {
   const [state, setState] = useState<EventCardState>({
     //drag props
@@ -58,6 +62,7 @@ export default function EventCard({
         event.start,
         event.end,
       );
+      calculateWidthAndDepthPosition();
       //   console.dir({ top, bottom });
       if (top !== undefined && bottom != undefined) {
         setState((prev) => ({
@@ -180,12 +185,12 @@ export default function EventCard({
     <div
       className="bg-secondary/20 border-secondary absolute rounded border-l-[6px] px-2 text-black"
       style={{
-        transform: `translateY(${state.translateY}px)`,
+        transform: `translateY(${state.translateY - CARD_GAP}px)`,
         cursor: `${state.isDragging ? "grabbing" : "grab"}`,
-        height: `${state.height}px`,
+        height: `${state.height + CARD_GAP * 2}px`,
         zIndex: `${state.isDragging || state.isResizing ? "999" : "0"}`,
-        left: "0px",
-        right: "0px",
+        left: `${event.left}%`,
+        right: `${event.right}%`,
       }}
       onPointerDown={handleDragStart}
       onPointerMove={handleDrag}
