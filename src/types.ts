@@ -8,6 +8,7 @@ export type Event = {
 export type AgendaPosition = {
   left: number; // 0 = left most, 100 = right most
   right: number; // 100 = left most, 0 right most
+  zIndex: number;
 };
 
 export type AgendaEvent = Event & AgendaPosition;

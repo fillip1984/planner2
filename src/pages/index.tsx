@@ -13,6 +13,12 @@ import { type AgendaEvent, type Timeslot } from "~/types";
 import { roundToNearestHundreth } from "~/utils/numberUtils";
 
 export default function Home() {
+  // may want to use screen size to change this from 1 to 2 depending on the media queries
+  // .5 looks good on full screen laptops
+  // 1 looks good tablets
+  // 2 looks good on mobile screens
+  const ELEVATION_MULTIPLIER = 2;
+
   const hours = eachHourOfInterval({
     start: startOfDay(new Date()),
     end: endOfDay(new Date()),
@@ -57,6 +63,7 @@ export default function Home() {
       description: "First",
       left: 0,
       right: 0,
+      zIndex: 0,
     },
     {
       id: "2",
@@ -65,6 +72,7 @@ export default function Home() {
       description: "Second",
       left: 0,
       right: 0,
+      zIndex: 0,
     },
     {
       id: "3",
@@ -73,14 +81,16 @@ export default function Home() {
       description: "Third",
       left: 0,
       right: 0,
+      zIndex: 0,
     },
     {
       id: "4",
       start: setHours(startOfDay(new Date()), 6),
-      end: setHours(startOfDay(new Date()), 9),
+      end: setHours(startOfDay(new Date()), 10),
       description: "Fourth",
       left: 0,
       right: 0,
+      zIndex: 0,
     },
     {
       id: "5",
@@ -89,6 +99,7 @@ export default function Home() {
       description: "Fifth",
       left: 0,
       right: 0,
+      zIndex: 0,
     },
   ]);
 
@@ -122,17 +133,36 @@ export default function Home() {
   };
 
   const calculateWidthAndElevationPosition = () => {
-    if (events.length === 0) {
-      return;
-    }
-    console.clear();
     console.log("calc width and elevation position run");
+    const updates: {
+      id: string;
+      left: number;
+      right: number;
+      zIndex: number;
+    }[] = [];
     let elevation = 0;
     let ongoingEvents = 0;
     timeslots.forEach((ts) => {
       const eventsStarting = events.filter(
         (e) => getHours(e.start) === ts.hour,
       );
+
+      if (eventsStarting.length === 1 && eventsStarting[0]) {
+        const id = eventsStarting[0].id;
+        updates.push({ id, left: elevation, right: 0, zIndex: ts.hour });
+      } else if (eventsStarting.length > 1) {
+        let left = elevation;
+        const width =
+          roundToNearestHundreth(100 / eventsStarting.length) - elevation;
+        let right = roundToNearestHundreth(100 - left - width);
+
+        eventsStarting.forEach((e) => {
+          updates.push({ id: e.id, left, right, zIndex: ts.hour });
+          left += width + elevation;
+          right = roundToNearestHundreth(100 - left - width);
+        });
+      }
+
       // have to subtract 1 hr since end goes onto instead of up to next hour.
       // For example, an event that is scheduled to run from 1 - 4 really goes
       // from 1:00 until 3:59 but not 4:00 on the dot
@@ -150,44 +180,24 @@ export default function Home() {
         ongoingEvents,
         elevation,
       });
-      if (eventsStarting.length === 1 && eventsStarting[0]) {
-        const id = eventsStarting[0].id;
 
-        setEvents((prevState) => {
-          return prevState.map((prevE) => {
-            if (prevE.id === id) {
-              console.log({ hour: ts.hour, elevation, id });
-              return { ...prevE, left: elevation };
-            } else {
-              return prevE;
-            }
-          });
-        });
-      } else if (eventsStarting.length > 1) {
-        let left = elevation;
-        const width =
-          roundToNearestHundreth(100 / eventsStarting.length) - elevation;
-        let right = roundToNearestHundreth(100 - left - width);
-        const updates: { id: string; left: number; right: number }[] = [];
-        eventsStarting.forEach((e) => {
-          updates.push({ id: e.id, left, right });
-          left += width;
-          right = roundToNearestHundreth(100 - left - width);
-        });
+      elevation += eventsStarting.length > 0 ? ELEVATION_MULTIPLIER : 0;
+    });
 
-        setEvents((prevState) => {
-          return prevState.map((prevE) => {
-            const update = updates.find((u) => u.id === prevE.id);
-            if (update) {
-              return { ...prevE, left: update.left, right: update.right };
-            } else {
-              return prevE;
-            }
-          });
-        });
-      }
-
-      elevation += eventsStarting.length;
+    setEvents((prevState) => {
+      return prevState.map((prevE) => {
+        const update = updates.find((u) => u.id === prevE.id);
+        if (update) {
+          return {
+            ...prevE,
+            left: update.left,
+            right: update.right,
+            zIndex: update.zIndex,
+          };
+        } else {
+          return prevE;
+        }
+      });
     });
   };
 

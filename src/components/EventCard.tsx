@@ -188,9 +188,11 @@ export default function EventCard({
         transform: `translateY(${state.translateY - CARD_GAP}px)`,
         cursor: `${state.isDragging ? "grabbing" : "grab"}`,
         height: `${state.height + CARD_GAP * 2}px`,
-        zIndex: `${state.isDragging || state.isResizing ? "999" : "0"}`,
-        left: `${event.left}%`,
-        right: `${event.right}%`,
+        zIndex: `${
+          state.isDragging || state.isResizing ? "999" : event.zIndex
+        }`,
+        left: `${state.isDragging || state.isResizing ? "0" : event.left}%`,
+        right: `${state.isDragging || state.isResizing ? "0" : event.right}%`,
       }}
       onPointerDown={handleDragStart}
       onPointerMove={handleDrag}
