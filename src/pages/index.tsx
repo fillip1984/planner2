@@ -10,6 +10,7 @@ import Head from "next/head";
 import { useEffect, useRef, useState } from "react";
 import EventCard from "~/components/EventCard";
 import { type AgendaEvent, type Timeslot } from "~/types";
+import { roundToNearestHundreth } from "~/utils/numberUtils";
 
 export default function Home() {
   const hours = eachHourOfInterval({
@@ -65,14 +66,14 @@ export default function Home() {
       left: 0,
       right: 0,
     },
-    // {
-    //   id: "3",
-    //   start: setHours(startOfDay(new Date()), 2),
-    //   end: setHours(startOfDay(new Date()), 5),
-    //   description: "Third",
-    //   left: 0,
-    //   right: 0,
-    // },
+    {
+      id: "3",
+      start: setHours(startOfDay(new Date()), 2),
+      end: setHours(startOfDay(new Date()), 5),
+      description: "Third",
+      left: 0,
+      right: 0,
+    },
     {
       id: "4",
       start: setHours(startOfDay(new Date()), 6),
@@ -121,6 +122,9 @@ export default function Home() {
   };
 
   const calculateWidthAndElevationPosition = () => {
+    if (events.length === 0) {
+      return;
+    }
     console.clear();
     console.log("calc width and elevation position run");
     let elevation = 0;
@@ -146,8 +150,43 @@ export default function Home() {
         ongoingEvents,
         elevation,
       });
+      if (eventsStarting.length === 1 && eventsStarting[0]) {
+        const id = eventsStarting[0].id;
 
-      eventsStarting.forEach((e) => (e.left = elevation));
+        setEvents((prevState) => {
+          return prevState.map((prevE) => {
+            if (prevE.id === id) {
+              console.log({ hour: ts.hour, elevation, id });
+              return { ...prevE, left: elevation };
+            } else {
+              return prevE;
+            }
+          });
+        });
+      } else if (eventsStarting.length > 1) {
+        let left = elevation;
+        const width =
+          roundToNearestHundreth(100 / eventsStarting.length) - elevation;
+        let right = roundToNearestHundreth(100 - left - width);
+        const updates: { id: string; left: number; right: number }[] = [];
+        eventsStarting.forEach((e) => {
+          updates.push({ id: e.id, left, right });
+          left += width;
+          right = roundToNearestHundreth(100 - left - width);
+        });
+
+        setEvents((prevState) => {
+          return prevState.map((prevE) => {
+            const update = updates.find((u) => u.id === prevE.id);
+            if (update) {
+              return { ...prevE, left: update.left, right: update.right };
+            } else {
+              return prevE;
+            }
+          });
+        });
+      }
+
       elevation += eventsStarting.length;
     });
   };
