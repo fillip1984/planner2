@@ -9,9 +9,11 @@ type EventCardState = {
   lastTranslateY: number;
 
   isResizing: boolean;
+  resizeFrom?: string;
   height: number;
 
   isModalOpen: boolean;
+  isOver: boolean;
 };
 
 const CARD_GAP = -1;
@@ -35,19 +37,20 @@ export default function EventCard({
   calculateWidthAndElevationPosition: () => void;
 }) {
   const [state, setState] = useState<EventCardState>({
-    //drag props
+    // drag props
     isDragging: false,
     originalY: 0,
     translateY: 0,
     lastTranslateY: 0,
 
-    //resize props
+    // resize props
     isResizing: false,
+    resizeFrom: undefined,
     height: 0,
 
-    //both drag and resize
-
-    isModalOpen: false,
+    // other props
+    isModalOpen: true,
+    isOver: false,
   });
 
   useEffect(() => {
@@ -83,6 +86,7 @@ export default function EventCard({
       handleDoubleClick();
       return;
     }
+
     // console.info({ event: "Drag start", id: event.id });
     setState((prev) => ({
       ...prev,
@@ -127,34 +131,45 @@ export default function EventCard({
     positionEventCard();
   };
 
-  const handleResizeStart = (e: PointerEvent<HTMLButtonElement>) => {
+  const handleResizeStart = (e: PointerEvent<HTMLDivElement>) => {
     // console.info({ event: "Resize start", id: event.id });
     e.stopPropagation();
     e.currentTarget.setPointerCapture(e.pointerId);
+    // eslint-disable-next-line @typescript-eslint/dot-notation
+    const resizeFrom = e.currentTarget.dataset["resizefrom"];
     setState((prev) => ({
       ...prev,
       isResizing: true,
+      resizeFrom,
     }));
   };
 
-  const handleResize = (e: PointerEvent<HTMLButtonElement>) => {
+  const handleResize = (e: PointerEvent<HTMLDivElement>) => {
     if (!state.isResizing) {
       return;
     }
+
     // console.debug({ event: "Resizing", id: event.id });
 
     // this code, along with the style={{heigh:...}}, is what causes the card to resize
     // To properly calculate height of the element, and thus resize it, you have to know how far
     // from the top of the visible screen this element is. That's because e.clientY is the
     // absolute position of the cursor on the screen
-    const top = e.currentTarget.parentElement?.getBoundingClientRect().top ?? 0;
+    let resizeOrigin = 0;
+    if (state.resizeFrom === "bottom") {
+      resizeOrigin =
+        e.currentTarget.parentElement?.getBoundingClientRect().top ?? 0;
+    } else {
+      resizeOrigin =
+        e.currentTarget.parentElement?.getBoundingClientRect().bottom ?? 0;
+    }
     setState((prev) => ({
       ...prev,
       //   // arbitruary + 15 just makes resizing look more natural.
       //   // The cursor gets ahead of the resize and padding by + 15
       //   // seems to hold the cursor closer to the handle
       //   // (might be the handle's pixel size maybe?)
-      height: e.clientY - top + 15,
+      height: e.clientY - resizeOrigin + 15,
     }));
 
     // this code maintains the event.endDate
@@ -166,7 +181,7 @@ export default function EventCard({
     }
   };
 
-  const handleResizeEnd = (e: PointerEvent<HTMLButtonElement>) => {
+  const handleResizeEnd = (e: PointerEvent<HTMLDivElement>) => {
     // console.info({ event: "Resize end", id: event.id });
     e.currentTarget.releasePointerCapture(e.pointerId);
     setState((prev) => ({
@@ -177,8 +192,15 @@ export default function EventCard({
   };
 
   const handleDoubleClick = () => {
-    // console.info({ event: "Double click", id: event.id });
     setState((prev) => ({ ...prev, isModalOpen: !prev.isModalOpen }));
+  };
+
+  const handleEnter = () => {
+    setState((prev) => ({ ...prev, isOver: true }));
+  };
+
+  const handleLeave = () => {
+    setState((prev) => ({ ...prev, isOver: false }));
   };
 
   return (
@@ -191,12 +213,16 @@ export default function EventCard({
         zIndex: `${
           state.isDragging || state.isResizing ? "999" : event.zIndex
         }`,
-        left: `${state.isDragging || state.isResizing ? "0" : event.left}%`,
-        right: `${state.isDragging || state.isResizing ? "0" : event.right}%`,
+        left: `${event.left}%`,
+        right: `${event.right}%`,
+        // left: `${state.isDragging || state.isResizing ? "0" : event.left}%`,
+        // right: `${state.isDragging || state.isResizing ? "0" : event.right}%`,
       }}
       onPointerDown={handleDragStart}
       onPointerMove={handleDrag}
       onPointerUp={handleDragEnd}
+      onMouseEnter={handleEnter}
+      onMouseLeave={handleLeave}
       // onPointerCancel={handleDragEnd}
       // reason for onMouseOver and onMouseOut: https://stackoverflow.com/questions/47295211/safari-wrong-cursor-when-dragging
       onMouseOver={() => {
@@ -209,11 +235,37 @@ export default function EventCard({
           return true;
         };
       }}>
-      <h3 className="-mb-2">{event.description}</h3>
-      <span className="text-xs">
-        {format(event.start, "h aa")} - {format(event.end, "h aa")} (
-        {getHours(event.end) - getHours(event.start)} hrs)
-      </span>
+      <div className="relative h-full w-full">
+        <h3 className="-mb-2">{event.description}</h3>
+        <span className="text-xs">
+          {format(event.start, "h aa")} - {format(event.end, "h aa")} (
+          {getHours(event.end) - getHours(event.start)} hrs)
+        </span>
+        {state.isModalOpen && <span>Modal Time!</span>}
+        {state.isOver && (
+          <>
+            {/* TODO: get this working */}
+            {/* <div
+              data-resizefrom="top"
+              onPointerDown={handleResizeStart}
+              onPointerMove={handleResize}
+              onPointerUp={handleResizeEnd}
+              className="absolute -top-2 right-0 h-4 w-4 rounded-full border-2 border-black"
+              style={{
+                cursor: `${state.isResizing ? "grabbing" : "n-resize"}`,
+              }}></div> */}
+            <div
+              data-resizefrom="bottom"
+              onPointerDown={handleResizeStart}
+              onPointerMove={handleResize}
+              onPointerUp={handleResizeEnd}
+              className="absolute -bottom-2 left-0 h-4 w-4 rounded-full border-2 border-black"
+              style={{
+                cursor: `${state.isResizing ? "grabbing" : "s-resize"}`,
+              }}></div>
+          </>
+        )}
+      </div>
     </div>
   );
 }
